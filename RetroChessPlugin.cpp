@@ -38,6 +38,9 @@
 #include <retroshare/rsplugin.h>
 #include <retroshare/rsversion.h>
 
+#include <chrono>
+#include <iostream>
+
 #define IMAGE_RetroChess ":/images/chess.png"
 
 
@@ -98,9 +101,20 @@ RetroChessPlugin::RetroChessPlugin()
 
 RetroChessPlugin::~RetroChessPlugin()
 {
+	// Temporary shutdown diagnostics (debug/retrochess-destructor-timing):
+	// the plugin delete takes 0.3 to 3 s on Linux, find which member costs it.
+	using sclock = std::chrono::steady_clock;
+	auto ms = [](sclock::time_point a, sclock::time_point b)
+	{ return (long long)std::chrono::duration_cast<std::chrono::milliseconds>(b - a).count(); };
+	auto t0 = sclock::now();
 	delete mRetroChessToasterNotify;
+	auto t1 = sclock::now();
 	delete mRetroChessNotify;
+	auto t2 = sclock::now();
 	delete mIcon;
+	auto t3 = sclock::now();
+	std::cerr << "shutdown: ~RetroChessPlugin toasterNotify " << ms(t0, t1)
+	          << " ms, notify " << ms(t1, t2) << " ms, icon " << ms(t2, t3) << " ms" << std::endl;
 }
 
 void RetroChessPlugin::setInterfaces(RsPlugInInterfaces &interfaces)
