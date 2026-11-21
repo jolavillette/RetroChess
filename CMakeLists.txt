@@ -215,6 +215,11 @@ endif()
 # RS_PLUGIN_INSTALL_DIR, when the RetroShare tree sets it, is where the
 # installed program looks for its plugins.
 if(RS_PLUGIN_INSTALL_DIR)
+    # libretroshare's function, when the tree has it: a search path from the
+    # installed plugin to a libretroshare bundled with the program
+    if(COMMAND retroshare_install_rpath)
+        retroshare_install_rpath(RetroChess "${RS_PLUGIN_INSTALL_DIR}")
+    endif()
     install(TARGETS RetroChess DESTINATION "${RS_PLUGIN_INSTALL_DIR}")
 else()
     install(TARGETS RetroChess DESTINATION lib/retroshare/plugins)
