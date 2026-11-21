@@ -96,10 +96,18 @@ add_library(RetroChess MODULE
     ${RETROCHESS_RESOURCES}
 )
 
+# RS_PLUGIN_BINARY_DIR, when the RetroShare tree sets it, is where the program
+# run from the build tree looks for its plugins.
+if(RS_PLUGIN_BINARY_DIR)
+    set(RETROCHESS_OUTPUT_DIR "${RS_PLUGIN_BINARY_DIR}")
+else()
+    set(RETROCHESS_OUTPUT_DIR "${CMAKE_BINARY_DIR}/plugins")
+endif()
+
 set_target_properties(RetroChess PROPERTIES
     PREFIX "lib"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins"
+    LIBRARY_OUTPUT_DIRECTORY "${RETROCHESS_OUTPUT_DIR}"
+    RUNTIME_OUTPUT_DIRECTORY "${RETROCHESS_OUTPUT_DIR}"
     AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/gui;${CMAKE_CURRENT_SOURCE_DIR}/gui/toaster;${CMAKE_CURRENT_SOURCE_DIR}/4connect"
 )
 
@@ -108,8 +116,24 @@ set_target_properties(RetroChess PROPERTIES
 # as long as the plugin lives in <root>/plugins/RetroChess.
 get_filename_component(RS_SUPERPROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+# A RetroShare tree that exports its CMake targets (retroshare::retroshare and
+# retroshare::retroshare-gui): link them, on every platform. They carry the
+# include directories and the compile definitions of the host, RS_USE_CALENDAR
+# among them, so the plugin is built with the very layout of the program that
+# loads it and nothing has to be mirrored here.
+if(TARGET retroshare::retroshare AND TARGET retroshare::retroshare-gui)
+    set(RETROCHESS_WITH_RS_TARGETS TRUE)
+    target_link_libraries(RetroChess PRIVATE
+        retroshare::retroshare retroshare::retroshare-gui)
+else()
+    set(RETROCHESS_WITH_RS_TARGETS FALSE)
+endif()
+
 if(WIN32)
     target_compile_definitions(RetroChess PRIVATE WINDOWS_SYS)
+endif()
+
+if(WIN32 AND NOT RETROCHESS_WITH_RS_TARGETS)
 
     # A Windows DLL has to resolve every symbol at link time, so unlike the ELF
     # builds this plugin must link against RetroShare itself. In the super-project
@@ -154,9 +178,12 @@ target_compile_definitions(RetroChess PRIVATE RS_NO_WARN_DEPRECATED)
 # Must match the host build: RS_USE_CALENDAR adds a member to RsPlugInInterfaces
 # (retroshare/rsplugin.h) before mGxsTunnels, so a plugin built without it reads
 # the wrong pointer and crashes at startup. ON by default, like libretroshare.
-option(RS_USE_CALENDAR "Build against a RetroShare with the GXS Calendar service (default in CMake builds)" ON)
-if(RS_USE_CALENDAR)
-    target_compile_definitions(RetroChess PRIVATE RS_USE_CALENDAR)
+# With the exported targets the definition comes from libretroshare itself.
+if(NOT RETROCHESS_WITH_RS_TARGETS)
+    option(RS_USE_CALENDAR "Build against a RetroShare with the GXS Calendar service (default in CMake builds)" ON)
+    if(RS_USE_CALENDAR)
+        target_compile_definitions(RetroChess PRIVATE RS_USE_CALENDAR)
+    endif()
 endif()
 target_compile_options(RetroChess PRIVATE
     $<$<CXX_COMPILER_ID:GNU>:-Wall;-Wextra;-Wno-deprecated-declarations>
@@ -175,10 +202,20 @@ target_include_directories(RetroChess PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/gui
     ${CMAKE_CURRENT_SOURCE_DIR}/services
     ${CMAKE_CURRENT_SOURCE_DIR}/interface
-    ${RS_SUPERPROJECT_ROOT}/libretroshare/src
-    ${RS_SUPERPROJECT_ROOT}/retroshare-gui/src
-    ${RS_SUPERPROJECT_ROOT}/retroshare-gui/src/gui
-    ${RS_SUPERPROJECT_ROOT}/supportlibs/rapidjson/include
 )
+if(NOT RETROCHESS_WITH_RS_TARGETS)
+    target_include_directories(RetroChess PRIVATE
+        ${RS_SUPERPROJECT_ROOT}/libretroshare/src
+        ${RS_SUPERPROJECT_ROOT}/retroshare-gui/src
+        ${RS_SUPERPROJECT_ROOT}/retroshare-gui/src/gui
+        ${RS_SUPERPROJECT_ROOT}/supportlibs/rapidjson/include
+    )
+endif()
 
-install(TARGETS RetroChess DESTINATION lib/retroshare/plugins)
+# RS_PLUGIN_INSTALL_DIR, when the RetroShare tree sets it, is where the
+# installed program looks for its plugins.
+if(RS_PLUGIN_INSTALL_DIR)
+    install(TARGETS RetroChess DESTINATION "${RS_PLUGIN_INSTALL_DIR}")
+else()
+    install(TARGETS RetroChess DESTINATION lib/retroshare/plugins)
+endif()

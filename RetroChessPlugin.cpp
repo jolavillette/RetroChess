@@ -39,6 +39,22 @@
 #include <retroshare/rsplugin.h>
 #include <retroshare/rsversion.h>
 
+// RetroShare's version macros have two spellings. Trees built with the CMake
+// refactor define RS_VERSION_MAJOR / _MINOR / _PATCH and no revision string;
+// older trees define RS_MAJOR_VERSION / RS_MINOR_VERSION / RS_MINI_VERSION and
+// RS_EXTRA_VERSION. Use whichever the tree provides.
+#ifdef RS_VERSION_MAJOR
+#	define RETROCHESS_RS_MAJOR    RS_VERSION_MAJOR
+#	define RETROCHESS_RS_MINOR    RS_VERSION_MINOR
+#	define RETROCHESS_RS_PATCH    RS_VERSION_PATCH
+#	define RETROCHESS_RS_REVISION 0
+#else
+#	define RETROCHESS_RS_MAJOR    RS_MAJOR_VERSION
+#	define RETROCHESS_RS_MINOR    RS_MINOR_VERSION
+#	define RETROCHESS_RS_PATCH    RS_MINI_VERSION
+#	define RETROCHESS_RS_REVISION abs(atoi(RS_EXTRA_VERSION))
+#endif
+
 #define IMAGE_RetroChess ":/images/chess.png"
 
 
@@ -61,7 +77,7 @@ extern "C" {
 	// It will be tested by RS to load the plugin automatically, since it is safe to load plugins
 	// with same revision numbers, assuming that the revision numbers are up-to-date.
 	//
-	uint32_t RETROSHARE_PLUGIN_revision = abs(atoi(RS_EXTRA_VERSION)) ;
+	uint32_t RETROSHARE_PLUGIN_revision = RETROCHESS_RS_REVISION ;
 
 	// This symbol contains the svn revision number grabbed from the executable.
 	// It will be tested by RS to load the plugin automatically, since it is safe to load plugins
@@ -72,10 +88,10 @@ extern "C" {
 
 void RetroChessPlugin::getPluginVersion(int& major, int& minor, int& build, int& svn_rev) const
 {
-	major = RS_MAJOR_VERSION ;
-	minor = RS_MINOR_VERSION ;
-	build = RS_MINI_VERSION ;
-	svn_rev = abs(atoi(RS_EXTRA_VERSION)) ;
+	major = RETROCHESS_RS_MAJOR ;
+	minor = RETROCHESS_RS_MINOR ;
+	build = RETROCHESS_RS_PATCH ;
+	svn_rev = RETROCHESS_RS_REVISION ;
 }
 
 RetroChessPlugin::RetroChessPlugin()
